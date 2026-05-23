@@ -1,0 +1,215 @@
+================================================================
+FIRE NOC SYSTEM — STEP-BY-STEP SETUP GUIDE
+================================================================
+
+PREREQUISITES
+-------------
+1. Python 3.10 or higher   → https://python.org/downloads
+2. MySQL Server 8.0+        → https://dev.mysql.com/downloads/installer/
+3. MySQL Workbench          → Included with MySQL Installer
+4. VS Code                  → https://code.visualstudio.com
+
+================================================================
+STEP 1 — EXTRACT THE PROJECT
+================================================================
+
+Extract the ZIP file to a location, e.g.:
+  C:\Projects\fire_noc_system\
+
+================================================================
+STEP 2 — SETUP THE MYSQL DATABASE
+================================================================
+
+A) Open MySQL Workbench
+B) Click the + button next to "MySQL Connections"
+   - Connection Name: localhost
+   - Hostname: 127.0.0.1
+   - Port: 3306
+   - Username: root
+   - Password: (your MySQL root password)
+C) Click "Test Connection" — should say "Connection Successful"
+D) Double-click the connection to open it
+
+E) Go to:  File → Open SQL Script
+F) Navigate to:  fire_noc_system/backend/database.sql
+G) Click Open
+H) Press Ctrl+Shift+Enter (or click the lightning bolt icon)
+   to execute ALL queries
+I) Refresh the Schemas panel (left side)
+   You should see "fire_noc_db" listed
+
+================================================================
+STEP 3 — CONFIGURE DATABASE PASSWORD
+================================================================
+
+Open file:  fire_noc_system/backend/config.py
+
+Find this line:
+  DB_PASSWORD = 'root'
+
+Change it to YOUR MySQL password:
+  DB_PASSWORD = 'your_actual_password'
+
+Save the file.
+
+================================================================
+STEP 4 — OPEN PROJECT IN VS CODE
+================================================================
+
+A) Open VS Code
+B) File → Open Folder
+C) Select the fire_noc_system folder
+D) Open the integrated terminal: Ctrl + ` (backtick)
+
+================================================================
+STEP 5 — CREATE VIRTUAL ENVIRONMENT
+================================================================
+
+In VS Code terminal, navigate to backend:
+  cd backend
+
+Create virtual environment:
+  python -m venv venv
+
+Activate it:
+  Windows:   venv\Scripts\activate
+  Mac/Linux: source venv/bin/activate
+
+You should see (venv) in the terminal prompt.
+
+================================================================
+STEP 6 — INSTALL REQUIRED PACKAGES
+================================================================
+
+With venv activated, run:
+  pip install -r requirements.txt
+
+This installs: Flask, SQLAlchemy, JWT, bcrypt, CORS, PyMySQL
+
+Wait for all packages to finish installing.
+
+================================================================
+STEP 7 — START THE FLASK SERVER
+================================================================
+
+In the backend folder (with venv active):
+  python app.py
+
+Expected output:
+  * Running on http://127.0.0.1:5000
+  ✅  Database tables verified / created.
+  🔥  Fire NOC System running at http://localhost:5000
+
+Keep this terminal open while using the app.
+
+================================================================
+STEP 8 — ACCESS THE APPLICATION
+================================================================
+
+Open your web browser (Chrome recommended) and go to:
+  http://localhost:5000
+
+You'll see the Fire NOC System landing page.
+
+================================================================
+LOGIN CREDENTIALS (Demo Data)
+================================================================
+
+ADMIN:
+  Username: admin
+  Password: Admin@123
+  Dashboard: http://localhost:5000/pages/admin-dashboard.html
+
+INSPECTOR:
+  Username: inspector1
+  Password: Admin@123
+  Dashboard: http://localhost:5000/pages/inspector-dashboard.html
+
+APPLICANT:
+  Username: applicant1
+  Password: Admin@123
+  Dashboard: http://localhost:5000/pages/applicant-dashboard.html
+
+NOTE: All demo passwords are: Admin@123
+      (The bcrypt hash in database.sql may not match this password
+       for seed users. If login fails, register a new account and
+       use those credentials, OR update the hash using the script below)
+
+================================================================
+IF DEMO LOGIN FAILS — RESET PASSWORDS
+================================================================
+
+Run this Python script once to fix seed user passwords:
+
+  cd backend
+  python -c "
+from app import create_app
+from extensions import db, bcrypt
+from models.models import User
+app = create_app()
+with app.app_context():
+    for u in User.query.all():
+        u.password = bcrypt.generate_password_hash('Admin@123').decode('utf-8')
+    db.session.commit()
+    print('All passwords reset to Admin@123')
+"
+
+================================================================
+TESTING WITH POSTMAN
+================================================================
+
+1. Open Postman
+2. Create new request: POST http://localhost:5000/api/login
+3. Body → raw → JSON:
+   {"username": "admin", "password": "Admin@123"}
+4. Copy the "token" from the response
+5. For all other requests, add Header:
+   Key: Authorization
+   Value: Bearer <paste_token_here>
+
+================================================================
+COMMON ERRORS & FIXES
+================================================================
+
+ERROR: "Access denied for user 'root'@'localhost'"
+FIX:   Check DB_PASSWORD in config.py matches your MySQL password
+
+ERROR: "Can't connect to MySQL server"
+FIX:   Make sure MySQL service is running
+       Windows: Services → MySQL80 → Start
+
+ERROR: "No module named 'flask'"
+FIX:   Make sure venv is activated, then: pip install -r requirements.txt
+
+ERROR: "Table 'fire_noc_db.xxx' doesn't exist"
+FIX:   Import database.sql again in MySQL Workbench
+
+ERROR: Port 5000 already in use
+FIX:   Change port in app.py last line:
+       app.run(debug=True, port=5001)
+       Then access: http://localhost:5001
+
+================================================================
+FILE UPLOADS
+================================================================
+
+Uploaded files are saved in:
+  backend/uploads/documents/    ← Application documents
+  backend/uploads/inspections/  ← Inspection photos
+  backend/uploads/noc/          ← NOC certificates
+
+Max file size: 16 MB
+Allowed types: PDF, PNG, JPG, JPEG, GIF, DOC, DOCX
+
+================================================================
+SUPPORT
+================================================================
+
+For issues, check:
+1. MySQL Workbench connection is working
+2. Virtual environment is activated (venv)
+3. All packages installed (requirements.txt)
+4. database.sql was imported successfully
+5. config.py has correct DB_PASSWORD
+
+================================================================

@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Admin Dashboard | Fire NOC System</title>
+  <link rel="stylesheet" href="../css/style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+<div class="main-content" id="mainContent">
+  <div class="page-content" id="pageContent">
+    <!-- Stat Cards -->
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:20px;margin-bottom:24px" id="statsGrid">
+      <div class="stat-card"><div class="stat-icon orange"><i class="fas fa-file-alt"></i></div><div><div class="stat-val" id="sTotal">—</div><div class="stat-lbl">Total Applications</div></div></div>
+      <div class="stat-card"><div class="stat-icon yellow"><i class="fas fa-clock"></i></div><div><div class="stat-val" id="sPending">—</div><div class="stat-lbl">Pending</div></div></div>
+      <div class="stat-card"><div class="stat-icon blue"><i class="fas fa-search"></i></div><div><div class="stat-val" id="sInspection">—</div><div class="stat-lbl">Under Inspection</div></div></div>
+      <div class="stat-card"><div class="stat-icon green"><i class="fas fa-check-circle"></i></div><div><div class="stat-val" id="sApproved">—</div><div class="stat-lbl">Approved</div></div></div>
+      <div class="stat-card"><div class="stat-icon red"><i class="fas fa-times-circle"></i></div><div><div class="stat-val" id="sRejected">—</div><div class="stat-lbl">Rejected</div></div></div>
+      <div class="stat-card"><div class="stat-icon purple"><i class="fas fa-users"></i></div><div><div class="stat-val" id="sUsers">—</div><div class="stat-lbl">Total Users</div></div></div>
+    </div>
+
+    <!-- Recent Applications + Quick Actions -->
+    <div style="display:grid;grid-template-columns:2fr 1fr;gap:20px" id="mainGrid">
+      <div class="card">
+        <div class="card-header">
+          <h5><i class="fas fa-list" style="color:#ff6a00;margin-right:8px"></i>Recent Applications</h5>
+          <a href="inspection-management.html" style="font-size:.8rem;color:#ff6a00">View All →</a>
+        </div>
+        <div class="card-body" style="padding:0">
+          <div class="table-responsive">
+            <table class="data-table" id="recentTable">
+              <thead><tr><th>Building</th><th>Type</th><th>Status</th><th>Priority</th><th>Action</th></tr></thead>
+              <tbody id="recentTbody"><tr><td colspan="5" style="text-align:center;padding:30px;color:#999">Loading...</td></tr></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:16px">
+        <!-- Quick NOC Approval -->
+        <div class="card">
+          <div class="card-header"><h5><i class="fas fa-certificate" style="color:#ff6a00;margin-right:8px"></i>Quick NOC</h5></div>
+          <div class="card-body">
+            <div class="form-group">
+              <label class="form-label">Application ID</label>
+              <input type="number" class="form-control" id="nocAppId" placeholder="Enter App ID">
+            </div>
+            <div style="display:flex;gap:8px">
+              <button class="btn-primary-custom" style="flex:1;background:#28a745;justify-content:center" onclick="quickApprove()"><i class="fas fa-check"></i> Approve</button>
+              <button class="btn-primary-custom" style="flex:1;background:#dc3545;justify-content:center" onclick="quickReject()"><i class="fas fa-times"></i> Reject</button>
+            </div>
+          </div>
+        </div>
+        <!-- Activity Log -->
+        <div class="card" style="flex:1">
+          <div class="card-header"><h5><i class="fas fa-history" style="color:#ff6a00;margin-right:8px"></i>Quick Stats</h5></div>
+          <div class="card-body">
+            <div style="display:flex;flex-direction:column;gap:12px" id="quickStats">
+              <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid #f0f0f0">
+                <span style="font-size:.83rem;color:#666"><i class="fas fa-tools" style="color:#ff6a00;margin-right:6px"></i>Total Inspections</span>
+                <span id="qInsp" style="font-weight:700">—</span>
+              </div>
+              <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid #f0f0f0">
+                <span style="font-size:.83rem;color:#666"><i class="fas fa-redo" style="color:#ff6a00;margin-right:6px"></i>Follow-up Required</span>
+                <span id="qFollowup" style="font-weight:700">—</span>
+              </div>
+              <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0">
+                <span style="font-size:.83rem;color:#666"><i class="fas fa-bell" style="color:#ff6a00;margin-right:6px"></i>Unread Alerts</span>
+                <span id="qNotif" style="font-weight:700;color:#ff6a00">—</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- All Applications Table -->
+    <div class="card" style="margin-top:20px">
+      <div class="card-header">
+        <h5><i class="fas fa-table" style="color:#ff6a00;margin-right:8px"></i>All Applications</h5>
+        <div class="search-bar">
+          <input type="text" class="search-input" id="appSearch" placeholder="Search applications...">
+        </div>
+      </div>
+      <div class="card-body" style="padding:0">
+        <div class="table-responsive">
+          <table class="data-table" id="allAppsTable">
+            <thead>
+              <tr>
+                <th>#ID</th><th>Building Name</th><th>Type</th><th>City</th>
+                <th>Applicant</th><th>Status</th><th>Priority</th><th>Date</th><th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="allAppsTbody"><tr><td colspan="9" style="text-align:center;padding:30px;color:#999"><i class="fas fa-spinner fa-spin" style="color:#ff6a00"></i> Loading...</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Update Status Modal -->
+<div class="modal-overlay" id="updateModal">
+  <div class="modal-box">
+    <div class="modal-header">
+      <h5>Update Application Status</h5>
+      <button class="modal-close" onclick="closeModal('updateModal')">&times;</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="editAppId">
+      <div class="form-group">
+        <label class="form-label">New Status</label>
+        <select class="form-select" id="editStatus">
+          <option>Pending</option>
+          <option>Under Inspection</option>
+          <option>Follow-up Required</option>
+          <option>Approved</option>
+          <option>Rejected</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Remarks</label>
+        <textarea class="form-control" id="editRemarks" rows="3" placeholder="Add remarks..."></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-primary-custom" onclick="updateAppStatus()"><i class="fas fa-save"></i> Update</button>
+      <button class="btn-sm-custom" style="background:#eee" onclick="closeModal('updateModal')">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<script src="../js/main.js"></script>
+<script src="../js/layout.js"></script>
+<script>
+  if (!requireAuth('admin')) {}
+  injectLayout('admin','Admin Dashboard');
+
+  async function loadDashboard() {
+    const res = await apiFetch('/dashboard/admin');
+    if (!res.ok) { showToast(res.data.error || 'Failed to load dashboard','error'); return; }
+    const d = res.data;
+    document.getElementById('sTotal').textContent      = d.total_applications;
+    document.getElementById('sPending').textContent    = d.pending;
+    document.getElementById('sInspection').textContent = d.under_inspection;
+    document.getElementById('sApproved').textContent   = d.approved;
+    document.getElementById('sRejected').textContent   = d.rejected;
+    document.getElementById('sUsers').textContent      = d.total_users;
+    document.getElementById('qInsp').textContent       = d.total_inspections;
+    document.getElementById('qFollowup').textContent   = d.followup_required;
+    document.getElementById('qNotif').textContent      = d.unread_notifications;
+
+    // Recent table
+    const tbody = document.getElementById('recentTbody');
+    if (!d.recent_applications.length) {
+      tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:20px;color:#999">No applications yet</td></tr>';
+    } else {
+      tbody.innerHTML = d.recent_applications.map(a => `
+        <tr>
+          <td><strong>${a.building_name}</strong><br><small style="color:#999">${a.city}</small></td>
+          <td>${a.building_type}</td>
+          <td>${statusBadge(a.current_status)}</td>
+          <td>${statusBadge(a.priority_level)}</td>
+          <td><button class="btn-icon btn-edit" onclick="openEdit(${a.application_id},'${a.current_status}','${a.remarks||''}')"><i class="fas fa-edit"></i></button></td>
+        </tr>`).join('');
+    }
+  }
+
+  async function loadAllApplications() {
+    const res = await apiFetch('/applications');
+    if (!res.ok) return;
+    const tbody = document.getElementById('allAppsTbody');
+    if (!res.data.length) {
+      tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;padding:30px;color:#999">No applications found</td></tr>';
+      return;
+    }
+    tbody.innerHTML = res.data.map(a => `
+      <tr>
+        <td><strong>#${a.application_id}</strong></td>
+        <td>${a.building_name}</td>
+        <td>${a.building_type}</td>
+        <td>${a.city}</td>
+        <td>${a.applicant_name}</td>
+        <td>${statusBadge(a.current_status)}</td>
+        <td>${statusBadge(a.priority_level)}</td>
+        <td>${fmtDate(a.application_date)}</td>
+        <td>
+          <button class="btn-icon btn-edit" title="Edit" onclick="openEdit(${a.application_id},'${a.current_status}','${(a.remarks||'').replace(/'/g,"\\'")}')"><i class="fas fa-edit"></i></button>
+          <button class="btn-icon btn-approve" title="Approve NOC" onclick="nocAction(${a.application_id},'approve')"><i class="fas fa-check"></i></button>
+          <button class="btn-icon btn-reject" title="Reject NOC" onclick="nocAction(${a.application_id},'reject')"><i class="fas fa-times"></i></button>
+          <button class="btn-icon btn-delete" title="Delete" onclick="deleteApp(${a.application_id})"><i class="fas fa-trash"></i></button>
+        </td>
+      </tr>`).join('');
+    filterTable('appSearch','allAppsTable');
+  }
+
+  function openEdit(id, status, remarks) {
+    document.getElementById('editAppId').value = id;
+    document.getElementById('editStatus').value = status;
+    document.getElementById('editRemarks').value = remarks;
+    openModal('updateModal');
+  }
+
+  async function updateAppStatus() {
+    const id = document.getElementById('editAppId').value;
+    const res = await apiFetch('/applications/'+id, {
+      method:'PUT',
+      body: JSON.stringify({ current_status: document.getElementById('editStatus').value, remarks: document.getElementById('editRemarks').value })
+    });
+    if (res.ok) { showToast('Status updated','success'); closeModal('updateModal'); loadAllApplications(); loadDashboard(); }
+    else showToast(res.data.error||'Update failed','error');
+  }
+
+  async function nocAction(appId, action) {
+    if (!confirm(`Are you sure you want to ${action} NOC for application #${appId}?`)) return;
+    const body = { application_id: appId };
+    if (action === 'reject') body.rejection_reason = prompt('Enter rejection reason:') || 'Does not meet standards';
+    const res = await apiFetch('/noc/'+action, { method:'POST', body: JSON.stringify(body) });
+    if (res.ok) { showToast(`NOC ${action}d successfully`,'success'); loadAllApplications(); loadDashboard(); }
+    else showToast(res.data.error||'Failed','error');
+  }
+
+  async function quickApprove() {
+    const id = document.getElementById('nocAppId').value;
+    if (!id) { showToast('Enter Application ID','warning'); return; }
+    await nocAction(parseInt(id),'approve');
+    document.getElementById('nocAppId').value = '';
+  }
+
+  async function quickReject() {
+    const id = document.getElementById('nocAppId').value;
+    if (!id) { showToast('Enter Application ID','warning'); return; }
+    await nocAction(parseInt(id),'reject');
+    document.getElementById('nocAppId').value = '';
+  }
+
+  async function deleteApp(id) {
+    if (!confirm('Delete application #'+id+'? This cannot be undone.')) return;
+    const res = await apiFetch('/applications/'+id, { method:'DELETE' });
+    if (res.ok) { showToast('Application deleted','success'); loadAllApplications(); loadDashboard(); }
+    else showToast(res.data.error||'Delete failed','error');
+  }
+
+  loadDashboard();
+  loadAllApplications();
+  setInterval(loadDashboard, 30000); // refresh every 30 sec
+</script>
+</body>
+</html>

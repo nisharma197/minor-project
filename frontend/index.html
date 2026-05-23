@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Fire NOC System | Fire Department Management</title>
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    body { margin:0; background:#0d0d0d; color:#fff; font-family:'Inter',sans-serif; overflow-x:hidden; }
+    /* Hero */
+    .hero {
+      min-height:100vh; display:flex; flex-direction:column;
+      background: linear-gradient(135deg, #0d0d0d 0%, #1c1c1c 60%, #0d0d0d 100%);
+      position:relative; overflow:hidden;
+    }
+    .hero-bg-glow {
+      position:absolute; width:700px; height:700px; border-radius:50%;
+      background:radial-gradient(circle, rgba(255,106,0,.15) 0%, transparent 65%);
+      top:-200px; right:-200px; pointer-events:none;
+    }
+    .hero-bg-glow2 {
+      position:absolute; width:500px; height:500px; border-radius:50%;
+      background:radial-gradient(circle, rgba(255,106,0,.08) 0%, transparent 65%);
+      bottom:-150px; left:-100px; pointer-events:none;
+    }
+    /* Navbar */
+    .landing-nav {
+      display:flex; align-items:center; justify-content:space-between;
+      padding:20px 60px; position:relative; z-index:10;
+    }
+    .nav-logo { display:flex; align-items:center; gap:10px; }
+    .nav-logo .fire { font-size:2rem; }
+    .nav-logo span { font-family:'Rajdhani',sans-serif; font-size:1.3rem; font-weight:700; }
+    .nav-logo span small { display:block; font-size:.65rem; color:#ff6a00; font-family:'Inter',sans-serif; font-weight:400; }
+    .nav-links { display:flex; gap:28px; align-items:center; }
+    .nav-links a { color:#ccc; text-decoration:none; font-size:.88rem; transition:color .2s; }
+    .nav-links a:hover { color:#ff6a00; }
+    .btn-nav-login {
+      background:transparent; border:1.5px solid #ff6a00; color:#ff6a00;
+      padding:8px 20px; border-radius:8px; font-size:.88rem; cursor:pointer; transition:all .2s;
+      text-decoration:none;
+    }
+    .btn-nav-login:hover { background:#ff6a00; color:#fff; }
+    .btn-nav-start {
+      background:#ff6a00; color:#fff; border:none;
+      padding:8px 20px; border-radius:8px; font-size:.88rem; cursor:pointer; transition:all .2s;
+      text-decoration:none;
+    }
+    .btn-nav-start:hover { background:#cc5200; }
+
+    /* Hero Content */
+    .hero-content {
+      flex:1; display:flex; flex-direction:column; align-items:center;
+      justify-content:center; text-align:center; padding:40px 20px;
+      position:relative; z-index:1;
+    }
+    .hero-badge {
+      display:inline-flex; align-items:center; gap:6px;
+      background:rgba(255,106,0,.12); border:1px solid rgba(255,106,0,.3);
+      color:#ff6a00; padding:6px 16px; border-radius:20px;
+      font-size:.78rem; font-weight:600; margin-bottom:24px; letter-spacing:.05em;
+    }
+    .hero-title {
+      font-family:'Rajdhani',sans-serif; font-size:clamp(2.5rem,6vw,4.5rem);
+      line-height:1.1; font-weight:700; margin-bottom:20px;
+    }
+    .hero-title span { color:#ff6a00; }
+    .hero-sub { font-size:1rem; color:#aaa; max-width:580px; line-height:1.7; margin-bottom:36px; }
+    .hero-btns { display:flex; gap:14px; flex-wrap:wrap; justify-content:center; }
+    .btn-hero-primary {
+      background:#ff6a00; color:#fff; padding:14px 32px;
+      border-radius:10px; font-size:1rem; font-weight:600;
+      cursor:pointer; transition:all .25s; text-decoration:none;
+      border:none; display:inline-flex; align-items:center; gap:8px;
+    }
+    .btn-hero-primary:hover { background:#cc5200; transform:translateY(-2px); box-shadow:0 12px 32px rgba(255,106,0,.35); }
+    .btn-hero-outline {
+      background:transparent; color:#fff; padding:14px 32px;
+      border-radius:10px; font-size:1rem; font-weight:600;
+      cursor:pointer; transition:all .25s; text-decoration:none;
+      border:1.5px solid rgba(255,255,255,.25); display:inline-flex; align-items:center; gap:8px;
+    }
+    .btn-hero-outline:hover { border-color:#ff6a00; color:#ff6a00; }
+
+    /* Stats bar */
+    .stats-bar {
+      display:flex; justify-content:center; gap:48px; padding:30px 40px;
+      border-top:1px solid rgba(255,255,255,.07); position:relative; z-index:1; flex-wrap:wrap;
+    }
+    .stat-item { text-align:center; }
+    .stat-item .num { font-family:'Rajdhani',sans-serif; font-size:2rem; color:#ff6a00; font-weight:700; }
+    .stat-item .lbl { font-size:.75rem; color:#666; margin-top:2px; }
+
+    /* Features */
+    .section { padding:80px 40px; max-width:1100px; margin:0 auto; }
+    .section-title { text-align:center; margin-bottom:14px; }
+    .section-title h2 { font-family:'Rajdhani',sans-serif; font-size:2.2rem; }
+    .section-title h2 span { color:#ff6a00; }
+    .section-title p { color:#888; font-size:.92rem; margin-top:6px; }
+
+    .features-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(280px,1fr)); gap:24px; margin-top:40px; }
+    .feature-card {
+      background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.08);
+      border-radius:16px; padding:28px; transition:all .25s;
+    }
+    .feature-card:hover { background:rgba(255,106,0,.06); border-color:rgba(255,106,0,.25); transform:translateY(-4px); }
+    .feature-icon { width:52px; height:52px; border-radius:12px; background:rgba(255,106,0,.12); color:#ff6a00; display:flex; align-items:center; justify-content:center; font-size:1.3rem; margin-bottom:16px; }
+    .feature-card h4 { font-family:'Rajdhani',sans-serif; font-size:1.15rem; margin-bottom:8px; }
+    .feature-card p  { font-size:.84rem; color:#888; line-height:1.6; }
+
+    /* Roles */
+    .roles-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); gap:24px; margin-top:40px; }
+    .role-card {
+      background:rgba(255,255,255,.04); border-radius:16px; padding:28px;
+      border-top:3px solid #ff6a00; text-align:center;
+    }
+    .role-card .role-icon { font-size:2.5rem; margin-bottom:12px; }
+    .role-card h4 { font-family:'Rajdhani',sans-serif; font-size:1.3rem; color:#ff6a00; margin-bottom:10px; }
+    .role-card ul { list-style:none; padding:0; }
+    .role-card ul li { font-size:.83rem; color:#aaa; padding:4px 0; border-bottom:1px solid rgba(255,255,255,.05); }
+
+    /* CTA */
+    .cta-section {
+      text-align:center; padding:80px 40px;
+      background:linear-gradient(135deg, rgba(255,106,0,.1) 0%, rgba(255,106,0,.05) 100%);
+    }
+    .cta-section h2 { font-family:'Rajdhani',sans-serif; font-size:2.2rem; margin-bottom:12px; }
+    .cta-section p { color:#aaa; font-size:.92rem; margin-bottom:28px; }
+
+    /* Footer */
+    footer {
+      background:#0a0a0a; border-top:1px solid rgba(255,255,255,.05);
+      text-align:center; padding:24px; color:#555; font-size:.8rem;
+    }
+    footer span { color:#ff6a00; }
+
+    @media(max-width:768px) {
+      .landing-nav { padding:16px 20px; }
+      .nav-links { display:none; }
+      .hero-title { font-size:2.2rem; }
+      .stats-bar { gap:24px; }
+    }
+  </style>
+</head>
+<body>
+  <!-- NAVBAR -->
+  <div class="hero">
+    <div class="hero-bg-glow"></div>
+    <div class="hero-bg-glow2"></div>
+    <nav class="landing-nav">
+      <div class="nav-logo">
+        <span class="fire">🔥</span>
+        <span>Fire NOC System <small>Government of India</small></span>
+      </div>
+      <div class="nav-links">
+        <a href="#features">Features</a>
+        <a href="#roles">Who Uses It</a>
+        <a href="#about">About</a>
+        <a href="pages/login.html" class="btn-nav-login">Login</a>
+        <a href="pages/register.html" class="btn-nav-start">Get Started</a>
+      </div>
+    </nav>
+
+    <!-- HERO CONTENT -->
+    <div class="hero-content">
+      <div class="hero-badge"><i class="fas fa-fire"></i> Official Fire Safety Platform</div>
+      <h1 class="hero-title">Real-Time Fire NOC<br><span>Monitoring System</span></h1>
+      <p class="hero-sub">
+        A centralized digital platform for Fire Departments to manage applications, schedule inspections, track follow-ups, and issue No-Objection Certificates — eliminating paperwork.
+      </p>
+      <div class="hero-btns">
+        <a href="pages/register.html" class="btn-hero-primary"><i class="fas fa-rocket"></i> Apply for NOC</a>
+        <a href="pages/login.html" class="btn-hero-outline"><i class="fas fa-sign-in-alt"></i> Login to Dashboard</a>
+      </div>
+    </div>
+
+    <!-- STATS BAR -->
+    <div class="stats-bar">
+      <div class="stat-item"><div class="num">500+</div><div class="lbl">Applications Processed</div></div>
+      <div class="stat-item"><div class="num">98%</div><div class="lbl">Faster NOC Issuance</div></div>
+      <div class="stat-item"><div class="num">3</div><div class="lbl">User Roles</div></div>
+      <div class="stat-item"><div class="num">24/7</div><div class="lbl">Real-Time Monitoring</div></div>
+    </div>
+  </div>
+
+  <!-- FEATURES -->
+  <section class="section" id="features">
+    <div class="section-title">
+      <h2>Powerful <span>Features</span></h2>
+      <p>Everything a Fire Department needs to manage NOC applications digitally</p>
+    </div>
+    <div class="features-grid">
+      <div class="feature-card">
+        <div class="feature-icon"><i class="fas fa-file-alt"></i></div>
+        <h4>Digital Applications</h4>
+        <p>Submit, track, and manage fire NOC applications entirely online. No more physical paperwork.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon"><i class="fas fa-search"></i></div>
+        <h4>Inspection Management</h4>
+        <p>Schedule, conduct, and report building inspections with photo uploads and detailed findings.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon"><i class="fas fa-redo-alt"></i></div>
+        <h4>Follow-Up Tracking</h4>
+        <p>Automatically create follow-up tasks when inspections fail and track their completion.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon"><i class="fas fa-certificate"></i></div>
+        <h4>NOC Issuance</h4>
+        <p>Approve or reject NOCs with one click. Applicants are notified instantly via the system.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon"><i class="fas fa-bell"></i></div>
+        <h4>Real-Time Alerts</h4>
+        <p>Automated notifications for every status change, keeping all stakeholders informed.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon"><i class="fas fa-chart-bar"></i></div>
+        <h4>Reports & Analytics</h4>
+        <p>Visual dashboards and detailed reports for monitoring department performance and KPIs.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ROLES -->
+  <section style="background:rgba(255,255,255,.02);padding:80px 0;" id="roles">
+    <div class="section" style="padding-top:0;padding-bottom:0">
+      <div class="section-title">
+        <h2>Three <span>Roles</span>, One Platform</h2>
+        <p>Each user type has a dedicated dashboard with role-specific tools</p>
+      </div>
+      <div class="roles-grid">
+        <div class="role-card">
+          <div class="role-icon">👨‍💼</div>
+          <h4>Admin</h4>
+          <ul>
+            <li>Manage all applications</li>
+            <li>Assign inspectors</li>
+            <li>Approve / Reject NOCs</li>
+            <li>View all reports</li>
+            <li>Manage user accounts</li>
+          </ul>
+        </div>
+        <div class="role-card">
+          <div class="role-icon">🔍</div>
+          <h4>Inspector</h4>
+          <ul>
+            <li>View assigned inspections</li>
+            <li>Submit inspection reports</li>
+            <li>Upload site photos</li>
+            <li>Schedule follow-ups</li>
+            <li>Update inspection status</li>
+          </ul>
+        </div>
+        <div class="role-card">
+          <div class="role-icon">🏢</div>
+          <h4>Applicant</h4>
+          <ul>
+            <li>Submit NOC applications</li>
+            <li>Upload documents</li>
+            <li>Track application status</li>
+            <li>Receive notifications</li>
+            <li>Download NOC certificate</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- CTA -->
+  <section class="cta-section" id="about">
+    <h2>Ready to Go <span style="color:#ff6a00">Digital?</span></h2>
+    <p>Join the Fire Department's digital transformation. Fast, secure, and paperless.</p>
+    <div style="display:flex;gap:14px;justify-content:center;flex-wrap:wrap">
+      <a href="pages/register.html" class="btn-hero-primary"><i class="fas fa-user-plus"></i> Register Now</a>
+      <a href="pages/login.html" class="btn-hero-outline" style="color:#fff;border-color:rgba(255,255,255,.3)"><i class="fas fa-sign-in-alt"></i> Login</a>
+    </div>
+  </section>
+
+  <!-- FOOTER -->
+  <footer>
+    <p>🔥 <span>Fire NOC Management System</span> &copy; 2025 | Fire Department, Government of India</p>
+    <p style="margin-top:4px">Built with Python Flask + MySQL | For Official Use Only</p>
+  </footer>
+</body>
+</html>

@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Register | Fire NOC System</title>
+  <link rel="stylesheet" href="../css/style.css">
+  <link rel="stylesheet" href="../css/auth.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body class="auth-body">
+  <div class="auth-card" style="max-width:500px">
+    <div class="auth-logo">
+      <span class="fire-icon">🔥</span>
+      <h2>Create Account</h2>
+      <p>Register for Fire NOC System</p>
+    </div>
+
+    <form id="registerForm">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <div class="form-group">
+          <label class="form-label">Full Name</label>
+          <input type="text" class="form-control" id="full_name" placeholder="Full Name" required>
+          <span class="form-error">Required</span>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Username</label>
+          <input type="text" class="form-control" id="username" placeholder="username" required>
+          <span class="form-error">Required</span>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Email Address</label>
+        <div class="input-group">
+          <i class="fas fa-envelope input-icon"></i>
+          <input type="email" class="form-control" id="email" placeholder="email@example.com" required>
+        </div>
+        <span class="form-error">Valid email required</span>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <div class="form-group">
+          <label class="form-label">Password</label>
+          <input type="password" class="form-control" id="password" placeholder="Password" required>
+          <span class="form-error">Required</span>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Phone Number</label>
+          <input type="tel" class="form-control" id="phone_number" placeholder="9876543210">
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Register as</label>
+        <select class="form-select" id="role" required>
+          <option value="applicant">🏢 Applicant (Building Owner)</option>
+          <option value="inspector">🔍 Inspector</option>
+          <option value="admin">👨‍💼 Admin</option>
+        </select>
+      </div>
+
+      <div id="regError" style="display:none;background:rgba(220,53,69,.1);color:#dc3545;padding:10px 14px;border-radius:8px;font-size:.84rem;margin-bottom:14px;border-left:3px solid #dc3545"></div>
+
+      <button type="submit" class="btn-auth" id="regBtn">
+        <span id="regBtnText"><i class="fas fa-user-plus"></i> Create Account</span>
+        <span id="regBtnLoad" style="display:none"><i class="fas fa-spinner fa-spin"></i> Registering...</span>
+      </button>
+    </form>
+
+    <div class="auth-footer">
+      Already have an account? <a href="login.html">Sign in</a>
+    </div>
+    <div class="auth-footer" style="margin-top:6px">
+      <a href="../index.html" style="color:#888"><i class="fas fa-arrow-left"></i> Back to Home</a>
+    </div>
+  </div>
+
+  <div id="toastContainer" class="toast-container"></div>
+  <script src="../js/main.js"></script>
+  <script>
+    if (getToken() && getUser()) redirectByRole(getUser().role);
+
+    document.getElementById('registerForm').addEventListener('submit', async function(e) {
+      e.preventDefault();
+      const errEl = document.getElementById('regError');
+      errEl.style.display = 'none';
+
+      const data = {
+        full_name:    document.getElementById('full_name').value.trim(),
+        username:     document.getElementById('username').value.trim(),
+        email:        document.getElementById('email').value.trim(),
+        password:     document.getElementById('password').value,
+        phone_number: document.getElementById('phone_number').value.trim(),
+        role:         document.getElementById('role').value
+      };
+
+      for (const [k,v] of Object.entries(data)) {
+        if (k !== 'phone_number' && !v) { showToast('Please fill all required fields','error'); return; }
+      }
+
+      document.getElementById('regBtnText').style.display = 'none';
+      document.getElementById('regBtnLoad').style.display  = 'inline';
+      document.getElementById('regBtn').disabled = true;
+
+      const res = await apiFetch('/register', { method:'POST', body: JSON.stringify(data) });
+
+      document.getElementById('regBtnText').style.display = 'inline';
+      document.getElementById('regBtnLoad').style.display  = 'none';
+      document.getElementById('regBtn').disabled = false;
+
+      if (res.ok) {
+        showToast('Account created! Redirecting to login...','success');
+        setTimeout(() => window.location.href='login.html', 1200);
+      } else {
+        errEl.textContent = res.data.error || 'Registration failed';
+        errEl.style.display = 'block';
+      }
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Inspection Management | Fire NOC System</title>
+  <link rel="stylesheet" href="../css/style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+<div class="main-content" id="mainContent">
+  <div class="page-content">
+    <div class="card">
+      <div class="card-header">
+        <h5><i class="fas fa-search" style="color:#ff6a00;margin-right:8px"></i>Inspection Management</h5>
+        <div style="display:flex;gap:10px;align-items:center">
+          <input type="text" class="search-input" id="inspSearch" placeholder="Search inspections...">
+          <button class="btn-primary-custom" onclick="openModal('createInspModal')" id="createBtn" style="display:none">
+            <i class="fas fa-plus"></i> Schedule Inspection
+          </button>
+        </div>
+      </div>
+      <div class="card-body" style="padding:0">
+        <div class="table-responsive">
+          <table class="data-table" id="inspTable">
+            <thead>
+              <tr><th>#</th><th>Building</th><th>Inspector</th><th>Date</th><th>Status</th><th>Findings</th><th>Actions</th></tr>
+            </thead>
+            <tbody id="inspTbody"><tr><td colspan="7" style="text-align:center;padding:30px;color:#999"><i class="fas fa-spinner fa-spin" style="color:#ff6a00"></i> Loading...</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Create Inspection Modal -->
+<div class="modal-overlay" id="createInspModal">
+  <div class="modal-box">
+    <div class="modal-header">
+      <h5>Schedule New Inspection</h5>
+      <button class="modal-close" onclick="closeModal('createInspModal')">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label">Application ID *</label>
+        <input type="number" class="form-control" id="newAppId" placeholder="Enter application ID" required>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Inspector *</label>
+        <select class="form-select" id="newInspectorId"></select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Inspection Date & Time *</label>
+        <input type="datetime-local" class="form-control" id="newInspDate" required>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Initial Remarks</label>
+        <textarea class="form-control" id="newInspRemarks" rows="2" placeholder="Initial remarks..."></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-primary-custom" onclick="createInspection()"><i class="fas fa-save"></i> Schedule</button>
+      <button class="btn-sm-custom" style="background:#eee" onclick="closeModal('createInspModal')">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- Update Inspection Modal -->
+<div class="modal-overlay" id="updateInspModal">
+  <div class="modal-box">
+    <div class="modal-header">
+      <h5>Update Inspection #<span id="editInspIdDisplay"></span></h5>
+      <button class="modal-close" onclick="closeModal('updateInspModal')">&times;</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="editInspId">
+      <div class="form-group">
+        <label class="form-label">Status</label>
+        <select class="form-select" id="editInspStatus">
+          <option>Scheduled</option><option>In Progress</option><option>Completed</option><option>Failed</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Findings</label>
+        <textarea class="form-control" id="editFindings" rows="3" placeholder="Describe findings in detail..."></textarea>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Remarks</label>
+        <textarea class="form-control" id="editInspRemarks" rows="2"></textarea>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Upload Photo (optional)</label>
+        <input type="file" class="form-control" id="inspPhoto" accept="image/*">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-primary-custom" onclick="saveInspection()"><i class="fas fa-save"></i> Save</button>
+      <button class="btn-sm-custom" style="background:#eee" onclick="closeModal('updateInspModal')">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<script src="../js/main.js"></script>
+<script src="../js/layout.js"></script>
+<script>
+  const user = getUser();
+  if (!user) { window.location.href='login.html'; }
+  const isAdmin = user?.role === 'admin';
+  injectLayout(user?.role || 'applicant','Inspection Management');
+  if (isAdmin) document.getElementById('createBtn').style.display = 'flex';
+
+  async function loadInspectors() {
+    if (!isAdmin) return;
+    const res = await apiFetch('/users');
+    if (!res.ok) return;
+    const sel = document.getElementById('newInspectorId');
+    res.data.filter(u => u.role === 'inspector').forEach(u => {
+      const opt = document.createElement('option');
+      opt.value = u.id; opt.textContent = u.full_name;
+      sel.appendChild(opt);
+    });
+  }
+
+  async function loadInspections() {
+    const res = await apiFetch('/inspections');
+    if (!res.ok) { showToast('Failed to load','error'); return; }
+    const tbody = document.getElementById('inspTbody');
+    if (!res.data.length) {
+      tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:30px;color:#999">No inspections found</td></tr>';
+      return;
+    }
+    tbody.innerHTML = res.data.map(i => `
+      <tr>
+        <td>#${i.inspection_id}</td>
+        <td><strong>${i.building_name}</strong></td>
+        <td>${i.inspector_name}</td>
+        <td>${fmtDate(i.inspection_date)}</td>
+        <td>${statusBadge(i.inspection_status)}</td>
+        <td style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${i.findings||'—'}</td>
+        <td>
+          ${(isAdmin || user?.role==='inspector') ? `<button class="btn-icon btn-edit" onclick="openEdit(${i.inspection_id},'${i.inspection_status}','${(i.findings||'').replace(/'/g,"\\'")}','${(i.remarks||'').replace(/'/g,"\\'")}')"><i class="fas fa-edit"></i></button>` : ''}
+        </td>
+      </tr>`).join('');
+    filterTable('inspSearch','inspTable');
+  }
+
+  async function createInspection() {
+    const dt = document.getElementById('newInspDate').value.replace('T',' ') + ':00';
+    const body = {
+      application_id:    parseInt(document.getElementById('newAppId').value),
+      inspector_id:      parseInt(document.getElementById('newInspectorId').value),
+      inspection_date:   dt,
+      remarks:           document.getElementById('newInspRemarks').value
+    };
+    if (!body.application_id || !body.inspector_id || !body.inspection_date) {
+      showToast('Fill all required fields','warning'); return;
+    }
+    const res = await apiFetch('/inspections', { method:'POST', body: JSON.stringify(body) });
+    if (res.ok) { showToast('Inspection scheduled!','success'); closeModal('createInspModal'); loadInspections(); }
+    else showToast(res.data.error||'Failed','error');
+  }
+
+  function openEdit(id, status, findings, remarks) {
+    document.getElementById('editInspId').value       = id;
+    document.getElementById('editInspIdDisplay').textContent = id;
+    document.getElementById('editInspStatus').value   = status;
+    document.getElementById('editFindings').value     = findings;
+    document.getElementById('editInspRemarks').value  = remarks;
+    openModal('updateInspModal');
+  }
+
+  async function saveInspection() {
+    const id = document.getElementById('editInspId').value;
+    const res = await apiFetch('/inspections/'+id, {
+      method:'PUT',
+      body: JSON.stringify({
+        inspection_status: document.getElementById('editInspStatus').value,
+        findings:          document.getElementById('editFindings').value,
+        remarks:           document.getElementById('editInspRemarks').value
+      })
+    });
+    if (res.ok) {
+      // Upload photo if selected
+      const file = document.getElementById('inspPhoto').files[0];
+      if (file) {
+        const fd = new FormData(); fd.append('file', file);
+        await apiUpload('/inspections/upload-image/'+id, fd);
+      }
+      showToast('Inspection updated!','success');
+      closeModal('updateInspModal');
+      loadInspections();
+    } else showToast(res.data.error||'Update failed','error');
+  }
+
+  loadInspectors();
+  loadInspections();
+</script>
+</body>
+</html>

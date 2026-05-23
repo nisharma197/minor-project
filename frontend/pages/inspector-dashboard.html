@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Inspector Dashboard | Fire NOC System</title>
+  <link rel="stylesheet" href="../css/style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+<div class="main-content" id="mainContent">
+  <div class="page-content">
+    <!-- Stats -->
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:20px;margin-bottom:24px">
+      <div class="stat-card"><div class="stat-icon orange"><i class="fas fa-search"></i></div><div><div class="stat-val" id="sMyInsp">—</div><div class="stat-lbl">My Inspections</div></div></div>
+      <div class="stat-card"><div class="stat-icon blue"><i class="fas fa-calendar"></i></div><div><div class="stat-val" id="sScheduled">—</div><div class="stat-lbl">Scheduled</div></div></div>
+      <div class="stat-card"><div class="stat-icon green"><i class="fas fa-check"></i></div><div><div class="stat-val" id="sCompleted">—</div><div class="stat-lbl">Completed</div></div></div>
+      <div class="stat-card"><div class="stat-icon red"><i class="fas fa-times"></i></div><div><div class="stat-val" id="sFailed">—</div><div class="stat-lbl">Failed</div></div></div>
+      <div class="stat-card"><div class="stat-icon yellow"><i class="fas fa-redo"></i></div><div><div class="stat-val" id="sFollowup">—</div><div class="stat-lbl">Pending Follow-ups</div></div></div>
+    </div>
+
+    <!-- My Inspections Table -->
+    <div class="card">
+      <div class="card-header">
+        <h5><i class="fas fa-search" style="color:#ff6a00;margin-right:8px"></i>My Assigned Inspections</h5>
+        <input type="text" class="search-input" id="inspSearch" placeholder="Search...">
+      </div>
+      <div class="card-body" style="padding:0">
+        <div class="table-responsive">
+          <table class="data-table" id="inspTable">
+            <thead>
+              <tr><th>#</th><th>Building</th><th>Scheduled Date</th><th>Status</th><th>Findings</th><th>Actions</th></tr>
+            </thead>
+            <tbody id="inspTbody"><tr><td colspan="6" style="text-align:center;padding:30px;color:#999"><i class="fas fa-spinner fa-spin" style="color:#ff6a00"></i> Loading...</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Update Inspection Modal -->
+<div class="modal-overlay" id="updateInspModal">
+  <div class="modal-box">
+    <div class="modal-header">
+      <h5>Update Inspection Report</h5>
+      <button class="modal-close" onclick="closeModal('updateInspModal')">&times;</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="editInspId">
+      <div class="form-group">
+        <label class="form-label">Inspection Status</label>
+        <select class="form-select" id="editInspStatus">
+          <option>Scheduled</option>
+          <option>In Progress</option>
+          <option>Completed</option>
+          <option>Failed</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Findings</label>
+        <textarea class="form-control" id="editFindings" rows="3" placeholder="Describe findings..."></textarea>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Remarks</label>
+        <textarea class="form-control" id="editInspRemarks" rows="2" placeholder="Additional remarks..."></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-primary-custom" onclick="saveInspection()"><i class="fas fa-save"></i> Save Report</button>
+      <button class="btn-sm-custom" style="background:#eee" onclick="closeModal('updateInspModal')">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<script src="../js/main.js"></script>
+<script src="../js/layout.js"></script>
+<script>
+  if (!requireAuth('inspector')) {}
+  injectLayout('inspector','Inspector Dashboard');
+
+  async function loadDashboard() {
+    const res = await apiFetch('/dashboard/inspector');
+    if (!res.ok) return;
+    const d = res.data;
+    document.getElementById('sMyInsp').textContent    = d.my_inspections;
+    document.getElementById('sScheduled').textContent = d.scheduled;
+    document.getElementById('sCompleted').textContent = d.completed;
+    document.getElementById('sFailed').textContent    = d.failed;
+    document.getElementById('sFollowup').textContent  = d.pending_followups;
+  }
+
+  async function loadInspections() {
+    const res = await apiFetch('/inspections');
+    if (!res.ok) return;
+    const tbody = document.getElementById('inspTbody');
+    if (!res.data.length) {
+      tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:30px;color:#999">No inspections assigned</td></tr>';
+      return;
+    }
+    tbody.innerHTML = res.data.map(i => `
+      <tr>
+        <td>#${i.inspection_id}</td>
+        <td><strong>${i.building_name}</strong></td>
+        <td>${fmtDate(i.inspection_date)}</td>
+        <td>${statusBadge(i.inspection_status)}</td>
+        <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${i.findings||'<span style="color:#aaa">No findings yet</span>'}</td>
+        <td>
+          <button class="btn-icon btn-edit" onclick="openEdit(${i.inspection_id},'${i.inspection_status}','${(i.findings||'').replace(/'/g,"\\'")}','${(i.remarks||'').replace(/'/g,"\\'")}')"><i class="fas fa-edit"></i></button>
+        </td>
+      </tr>`).join('');
+    filterTable('inspSearch','inspTable');
+  }
+
+  function openEdit(id, status, findings, remarks) {
+    document.getElementById('editInspId').value      = id;
+    document.getElementById('editInspStatus').value  = status;
+    document.getElementById('editFindings').value    = findings;
+    document.getElementById('editInspRemarks').value = remarks;
+    openModal('updateInspModal');
+  }
+
+  async function saveInspection() {
+    const id = document.getElementById('editInspId').value;
+    const res = await apiFetch('/inspections/'+id, {
+      method:'PUT',
+      body: JSON.stringify({
+        inspection_status: document.getElementById('editInspStatus').value,
+        findings:          document.getElementById('editFindings').value,
+        remarks:           document.getElementById('editInspRemarks').value
+      })
+    });
+    if (res.ok) { showToast('Inspection updated','success'); closeModal('updateInspModal'); loadInspections(); loadDashboard(); }
+    else showToast(res.data.error||'Update failed','error');
+  }
+
+  loadDashboard();
+  loadInspections();
+</script>
+</body>
+</html>

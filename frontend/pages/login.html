@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Login | Fire NOC System</title>
+  <link rel="stylesheet" href="../css/style.css">
+  <link rel="stylesheet" href="../css/auth.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body class="auth-body">
+  <div class="auth-card">
+    <div class="auth-logo">
+      <span class="fire-icon">🔥</span>
+      <h2>Fire NOC System</h2>
+      <p>Sign in to your account</p>
+    </div>
+
+    <form id="loginForm">
+      <div class="form-group">
+        <label class="form-label">Username</label>
+        <div class="input-group">
+          <i class="fas fa-user input-icon"></i>
+          <input type="text" class="form-control" id="username" placeholder="Enter username" required>
+        </div>
+        <span class="form-error">Username is required</span>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Password</label>
+        <div class="input-group">
+          <i class="fas fa-lock input-icon"></i>
+          <input type="password" class="form-control" id="password" placeholder="Enter password" required>
+        </div>
+        <span class="form-error">Password is required</span>
+      </div>
+
+      <div id="loginError" style="display:none;background:rgba(220,53,69,.1);color:#dc3545;padding:10px 14px;border-radius:8px;font-size:.84rem;margin-bottom:14px;border-left:3px solid #dc3545"></div>
+
+      <button type="submit" class="btn-auth" id="loginBtn">
+        <span id="loginBtnText"><i class="fas fa-sign-in-alt"></i> Sign In</span>
+        <span id="loginBtnLoading" style="display:none"><i class="fas fa-spinner fa-spin"></i> Signing in...</span>
+      </button>
+    </form>
+
+    <div class="auth-divider"><hr><span>Demo Credentials</span><hr></div>
+
+    <div style="display:grid;gap:8px;margin-bottom:16px">
+      <div onclick="fillCredentials('admin','Admin@123')" style="cursor:pointer;background:#f8f8f8;border:1px solid #eee;border-radius:8px;padding:10px 14px;font-size:.82rem;display:flex;align-items:center;gap:10px;transition:all .2s" onmouseover="this.style.borderColor='#ff6a00'" onmouseout="this.style.borderColor='#eee'">
+        <span style="font-size:1.2rem">👨‍💼</span>
+        <div><strong>Admin:</strong> admin / Admin@123</div>
+      </div>
+      <div onclick="fillCredentials('inspector1','Admin@123')" style="cursor:pointer;background:#f8f8f8;border:1px solid #eee;border-radius:8px;padding:10px 14px;font-size:.82rem;display:flex;align-items:center;gap:10px;transition:all .2s" onmouseover="this.style.borderColor='#ff6a00'" onmouseout="this.style.borderColor='#eee'">
+        <span style="font-size:1.2rem">🔍</span>
+        <div><strong>Inspector:</strong> inspector1 / Admin@123</div>
+      </div>
+      <div onclick="fillCredentials('applicant1','Admin@123')" style="cursor:pointer;background:#f8f8f8;border:1px solid #eee;border-radius:8px;padding:10px 14px;font-size:.82rem;display:flex;align-items:center;gap:10px;transition:all .2s" onmouseover="this.style.borderColor='#ff6a00'" onmouseout="this.style.borderColor='#eee'">
+        <span style="font-size:1.2rem">🏢</span>
+        <div><strong>Applicant:</strong> applicant1 / Admin@123</div>
+      </div>
+    </div>
+
+    <div class="auth-footer">
+      Don't have an account? <a href="register.html">Register here</a>
+    </div>
+    <div class="auth-footer" style="margin-top:6px">
+      <a href="../index.html" style="color:#888"><i class="fas fa-arrow-left"></i> Back to Home</a>
+    </div>
+  </div>
+
+  <div id="toastContainer" class="toast-container"></div>
+  <script src="../js/main.js"></script>
+  <script>
+    // Redirect if already logged in
+    if (getToken() && getUser()) redirectByRole(getUser().role);
+
+    function fillCredentials(u, p) {
+      document.getElementById('username').value = u;
+      document.getElementById('password').value = p;
+    }
+
+    document.getElementById('loginForm').addEventListener('submit', async function(e) {
+      e.preventDefault();
+      const username = document.getElementById('username').value.trim();
+      const password = document.getElementById('password').value;
+      const errEl = document.getElementById('loginError');
+      errEl.style.display = 'none';
+
+      if (!username || !password) { showToast('Please fill all fields','error'); return; }
+
+      document.getElementById('loginBtnText').style.display = 'none';
+      document.getElementById('loginBtnLoading').style.display = 'inline';
+      document.getElementById('loginBtn').disabled = true;
+
+      const res = await apiFetch('/login', {
+        method:'POST',
+        body: JSON.stringify({ username, password })
+      });
+
+      document.getElementById('loginBtnText').style.display = 'inline';
+      document.getElementById('loginBtnLoading').style.display = 'none';
+      document.getElementById('loginBtn').disabled = false;
+
+      if (res.ok) {
+        setAuth(res.data.token, res.data.user);
+        showToast('Login successful! Redirecting...','success');
+        setTimeout(() => redirectByRole(res.data.user.role), 800);
+      } else {
+        errEl.textContent = res.data.error || 'Login failed';
+        errEl.style.display = 'block';
+        showToast(res.data.error || 'Login failed','error');
+      }
+    });
+  </script>
+</body>
+</html>

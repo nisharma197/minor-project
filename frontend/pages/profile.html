@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>My Profile | Fire NOC System</title>
+  <link rel="stylesheet" href="../css/style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+<div class="main-content" id="mainContent">
+  <div class="page-content">
+    <div style="max-width:720px;margin:0 auto">
+
+      <!-- Profile header card -->
+      <div class="card" style="margin-bottom:20px">
+        <div style="background:linear-gradient(135deg,#ff6a00,#cc5200);padding:32px;border-radius:12px 12px 0 0;text-align:center">
+          <div style="width:80px;height:80px;border-radius:50%;background:rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center;margin:0 auto 12px;font-size:2.2rem;font-weight:700;color:#fff;border:3px solid rgba(255,255,255,.4)" id="profileAvatar">A</div>
+          <h3 style="color:#fff;font-family:'Rajdhani',sans-serif;font-size:1.6rem" id="profileName">Loading...</h3>
+          <div style="color:rgba(255,255,255,.75);font-size:.85rem;margin-top:4px" id="profileRole">—</div>
+          <div style="color:rgba(255,255,255,.7);font-size:.82rem;margin-top:2px" id="profileEmail">—</div>
+        </div>
+        <div class="card-body" style="text-align:center;padding:20px">
+          <div style="display:flex;justify-content:center;gap:32px;flex-wrap:wrap">
+            <div><div id="profileMember" style="font-size:.82rem;color:#999">—</div><div style="font-size:.75rem;color:#aaa">Member Since</div></div>
+            <div><div id="profilePhone" style="font-size:.82rem;color:#999">—</div><div style="font-size:.75rem;color:#aaa">Phone</div></div>
+            <div><div id="profileStatus" style="font-size:.82rem;color:#28a745"><i class="fas fa-circle" style="font-size:.6rem"></i> Active</div><div style="font-size:.75rem;color:#aaa">Account Status</div></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Edit Profile -->
+      <div class="card" style="margin-bottom:20px">
+        <div class="card-header"><h5><i class="fas fa-user-edit" style="color:#ff6a00;margin-right:8px"></i>Edit Profile</h5></div>
+        <div class="card-body">
+          <form id="profileForm">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+              <div class="form-group">
+                <label class="form-label">Full Name</label>
+                <input type="text" class="form-control" id="editName" placeholder="Full Name" required>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Phone Number</label>
+                <input type="tel" class="form-control" id="editPhone" placeholder="9876543210">
+              </div>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Email (read-only)</label>
+              <input type="email" class="form-control" id="editEmail" readonly style="background:#f8f8f8;color:#999">
+            </div>
+            <div style="display:flex;gap:12px;justify-content:flex-end;margin-top:8px">
+              <button type="submit" class="btn-primary-custom"><i class="fas fa-save"></i> Save Changes</button>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <!-- Change Password -->
+      <div class="card">
+        <div class="card-header"><h5><i class="fas fa-lock" style="color:#ff6a00;margin-right:8px"></i>Change Password</h5></div>
+        <div class="card-body">
+          <form id="passwordForm">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+              <div class="form-group">
+                <label class="form-label">New Password</label>
+                <input type="password" class="form-control" id="newPass" placeholder="New password" minlength="6">
+              </div>
+              <div class="form-group">
+                <label class="form-label">Confirm Password</label>
+                <input type="password" class="form-control" id="confirmPass" placeholder="Confirm password">
+              </div>
+            </div>
+            <div id="passError" style="display:none;color:#dc3545;font-size:.83rem;margin-bottom:10px"></div>
+            <div style="display:flex;gap:12px;justify-content:flex-end">
+              <button type="submit" class="btn-primary-custom" style="background:#333"><i class="fas fa-key"></i> Update Password</button>
+            </div>
+          </form>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script src="../js/main.js"></script>
+<script src="../js/layout.js"></script>
+<script>
+  const user = getUser();
+  if (!user) { window.location.href = 'login.html'; }
+  injectLayout(user?.role, 'My Profile');
+
+  async function loadProfile() {
+    const res = await apiFetch('/profile');
+    if (!res.ok) return;
+    const u = res.data;
+    document.getElementById('profileAvatar').textContent = u.full_name?.charAt(0).toUpperCase();
+    document.getElementById('profileName').textContent   = u.full_name;
+    document.getElementById('profileRole').textContent   = u.role.charAt(0).toUpperCase() + u.role.slice(1);
+    document.getElementById('profileEmail').textContent  = u.email;
+    document.getElementById('profileMember').textContent = fmtDate(u.created_at);
+    document.getElementById('profilePhone').textContent  = u.phone_number || '—';
+    document.getElementById('editName').value  = u.full_name;
+    document.getElementById('editPhone').value = u.phone_number || '';
+    document.getElementById('editEmail').value = u.email;
+  }
+
+  document.getElementById('profileForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    const res = await apiFetch('/profile', {
+      method:'PUT',
+      body: JSON.stringify({
+        full_name:    document.getElementById('editName').value.trim(),
+        phone_number: document.getElementById('editPhone').value.trim()
+      })
+    });
+    if (res.ok) {
+      // Update localStorage
+      const stored = getUser();
+      stored.full_name = res.data.user.full_name;
+      localStorage.setItem('fire_noc_user', JSON.stringify(stored));
+      showToast('Profile updated successfully!', 'success');
+      loadProfile();
+    } else showToast(res.data.error || 'Update failed', 'error');
+  });
+
+  document.getElementById('passwordForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    const np = document.getElementById('newPass').value;
+    const cp = document.getElementById('confirmPass').value;
+    const errEl = document.getElementById('passError');
+    errEl.style.display = 'none';
+    if (!np) { errEl.textContent='Enter new password'; errEl.style.display='block'; return; }
+    if (np !== cp) { errEl.textContent='Passwords do not match'; errEl.style.display='block'; return; }
+    if (np.length < 6) { errEl.textContent='Password must be at least 6 characters'; errEl.style.display='block'; return; }
+    const res = await apiFetch('/profile', { method:'PUT', body: JSON.stringify({ password: np }) });
+    if (res.ok) {
+      showToast('Password updated! Please login again.', 'success');
+      document.getElementById('newPass').value = '';
+      document.getElementById('confirmPass').value = '';
+      setTimeout(() => { clearAuth(); window.location.href='login.html'; }, 1500);
+    } else showToast(res.data.error || 'Failed', 'error');
+  });
+
+  loadProfile();
+</script>
+</body>
+</html>

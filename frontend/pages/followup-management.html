@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Follow-Up Management | Fire NOC System</title>
+  <link rel="stylesheet" href="../css/style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+<div class="main-content" id="mainContent">
+  <div class="page-content">
+    <div class="card">
+      <div class="card-header">
+        <h5><i class="fas fa-redo" style="color:#ff6a00;margin-right:8px"></i>Follow-Up Management</h5>
+        <div style="display:flex;gap:10px;align-items:center">
+          <input type="text" class="search-input" id="fuSearch" placeholder="Search follow-ups...">
+          <button class="btn-primary-custom" onclick="openModal('createFuModal')" id="createFuBtn" style="display:none">
+            <i class="fas fa-plus"></i> New Follow-Up
+          </button>
+        </div>
+      </div>
+      <div class="card-body" style="padding:0">
+        <div class="table-responsive">
+          <table class="data-table" id="fuTable">
+            <thead><tr><th>#</th><th>Inspection ID</th><th>Follow-up Date</th><th>Status</th><th>Remarks</th><th>Actions</th></tr></thead>
+            <tbody id="fuTbody"><tr><td colspan="6" style="text-align:center;padding:30px;color:#999"><i class="fas fa-spinner fa-spin" style="color:#ff6a00"></i> Loading...</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Create Follow-Up Modal -->
+<div class="modal-overlay" id="createFuModal">
+  <div class="modal-box">
+    <div class="modal-header">
+      <h5>Create Follow-Up</h5>
+      <button class="modal-close" onclick="closeModal('createFuModal')">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label">Inspection ID *</label>
+        <input type="number" class="form-control" id="fuInspId" placeholder="Enter inspection ID" required>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Follow-Up Date *</label>
+        <input type="datetime-local" class="form-control" id="fuDate" required>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Remarks</label>
+        <textarea class="form-control" id="fuRemarks" rows="3" placeholder="What needs to be checked?"></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-primary-custom" onclick="createFollowup()"><i class="fas fa-save"></i> Create</button>
+      <button class="btn-sm-custom" style="background:#eee" onclick="closeModal('createFuModal')">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- Update Follow-Up Modal -->
+<div class="modal-overlay" id="updateFuModal">
+  <div class="modal-box">
+    <div class="modal-header">
+      <h5>Update Follow-Up</h5>
+      <button class="modal-close" onclick="closeModal('updateFuModal')">&times;</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="editFuId">
+      <div class="form-group">
+        <label class="form-label">Status</label>
+        <select class="form-select" id="editFuStatus">
+          <option>Pending</option><option>Completed</option><option>Skipped</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Remarks</label>
+        <textarea class="form-control" id="editFuRemarks" rows="3"></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-primary-custom" onclick="updateFollowup()"><i class="fas fa-save"></i> Update</button>
+      <button class="btn-sm-custom" style="background:#eee" onclick="closeModal('updateFuModal')">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<script src="../js/main.js"></script>
+<script src="../js/layout.js"></script>
+<script>
+  const user = getUser();
+  if (!user) { window.location.href='login.html'; }
+  injectLayout(user?.role,'Follow-Up Management');
+  if (['admin','inspector'].includes(user?.role)) document.getElementById('createFuBtn').style.display='flex';
+
+  async function loadFollowups() {
+    const res = await apiFetch('/followups');
+    if (!res.ok) return;
+    const tbody = document.getElementById('fuTbody');
+    if (!res.data.length) {
+      tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:30px;color:#999">No follow-ups found</td></tr>';
+      return;
+    }
+    tbody.innerHTML = res.data.map(f => `
+      <tr>
+        <td>#${f.followup_id}</td>
+        <td>Inspection #${f.inspection_id}</td>
+        <td>${fmtDate(f.followup_date)}</td>
+        <td>${statusBadge(f.followup_status)}</td>
+        <td>${f.followup_remarks||'—'}</td>
+        <td>
+          ${['admin','inspector'].includes(user?.role) ? `<button class="btn-icon btn-edit" onclick="openEdit(${f.followup_id},'${f.followup_status}','${(f.followup_remarks||'').replace(/'/g,"\\'")}')"><i class="fas fa-edit"></i></button>` : '—'}
+        </td>
+      </tr>`).join('');
+    filterTable('fuSearch','fuTable');
+  }
+
+  async function createFollowup() {
+    const dt = document.getElementById('fuDate').value.replace('T',' ') + ':00';
+    const body = {
+      inspection_id:    parseInt(document.getElementById('fuInspId').value),
+      followup_date:    dt,
+      followup_remarks: document.getElementById('fuRemarks').value
+    };
+    if (!body.inspection_id) { showToast('Inspection ID required','warning'); return; }
+    const res = await apiFetch('/followups', { method:'POST', body: JSON.stringify(body) });
+    if (res.ok) { showToast('Follow-up created!','success'); closeModal('createFuModal'); loadFollowups(); }
+    else showToast(res.data.error||'Failed','error');
+  }
+
+  function openEdit(id, status, remarks) {
+    document.getElementById('editFuId').value      = id;
+    document.getElementById('editFuStatus').value  = status;
+    document.getElementById('editFuRemarks').value = remarks;
+    openModal('updateFuModal');
+  }
+
+  async function updateFollowup() {
+    const id = document.getElementById('editFuId').value;
+    const res = await apiFetch('/followups/'+id, {
+      method:'PUT',
+      body: JSON.stringify({
+        followup_status:  document.getElementById('editFuStatus').value,
+        followup_remarks: document.getElementById('editFuRemarks').value
+      })
+    });
+    if (res.ok) { showToast('Follow-up updated!','success'); closeModal('updateFuModal'); loadFollowups(); }
+    else showToast(res.data.error||'Failed','error');
+  }
+
+  loadFollowups();
+</script>
+</body>
+</html>

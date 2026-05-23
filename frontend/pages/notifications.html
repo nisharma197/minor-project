@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Notifications | Fire NOC System</title>
+  <link rel="stylesheet" href="../css/style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+<div class="main-content" id="mainContent">
+  <div class="page-content">
+    <div style="max-width:760px;margin:0 auto">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
+        <div>
+          <h4 style="font-family:'Rajdhani',sans-serif">Notifications <span id="unreadCount" style="font-size:1rem;color:#ff6a00"></span></h4>
+          <p style="font-size:.84rem;color:#999;margin-top:2px">Stay updated with your application activity</p>
+        </div>
+        <button class="btn-primary-custom" onclick="markAllRead()"><i class="fas fa-check-double"></i> Mark All Read</button>
+      </div>
+
+      <!-- Filter tabs -->
+      <div style="display:flex;gap:8px;margin-bottom:20px">
+        <button class="filter-btn active" onclick="filterNotifs('all',this)" style="padding:7px 18px;border-radius:20px;border:1.5px solid #ff6a00;background:#ff6a00;color:#fff;cursor:pointer;font-size:.83rem;transition:all .2s">All</button>
+        <button class="filter-btn" onclick="filterNotifs('Unread',this)" style="padding:7px 18px;border-radius:20px;border:1.5px solid #ddd;background:#fff;color:#666;cursor:pointer;font-size:.83rem;transition:all .2s">Unread</button>
+        <button class="filter-btn" onclick="filterNotifs('Read',this)" style="padding:7px 18px;border-radius:20px;border:1.5px solid #ddd;background:#fff;color:#666;cursor:pointer;font-size:.83rem;transition:all .2s">Read</button>
+      </div>
+
+      <div id="notifList"><div style="text-align:center;padding:40px;color:#999"><i class="fas fa-spinner fa-spin" style="color:#ff6a00;font-size:1.5rem"></i><p style="margin-top:12px">Loading notifications...</p></div></div>
+    </div>
+  </div>
+</div>
+
+<script src="../js/main.js"></script>
+<script src="../js/layout.js"></script>
+<script>
+  const user = getUser();
+  if (!user) { window.location.href = 'login.html'; }
+  injectLayout(user?.role, 'Notifications');
+
+  let allNotifs = [];
+
+  async function loadNotifications() {
+    const res = await apiFetch('/notifications/' + user.id);
+    if (!res.ok) { showToast('Failed to load notifications', 'error'); return; }
+    allNotifs = res.data;
+    const unread = allNotifs.filter(n => n.status === 'Unread').length;
+    document.getElementById('unreadCount').textContent = unread > 0 ? `(${unread} unread)` : '';
+    renderNotifs(allNotifs);
+  }
+
+  function renderNotifs(list) {
+    const container = document.getElementById('notifList');
+    if (!list.length) {
+      container.innerHTML = `
+        <div style="text-align:center;padding:60px 20px;color:#aaa">
+          <i class="fas fa-bell-slash" style="font-size:3rem;color:#ddd;display:block;margin-bottom:16px"></i>
+          <p style="font-size:.95rem">No notifications yet</p>
+        </div>`;
+      return;
+    }
+    container.innerHTML = list.map(n => `
+      <div class="notif-item ${n.status === 'Unread' ? 'unread' : 'read'}" id="notif-${n.notification_id}">
+        <div class="notif-dot"></div>
+        <div style="flex:1">
+          <div class="notif-title">${n.title}</div>
+          <div class="notif-msg">${n.message}</div>
+          <div class="notif-time"><i class="fas fa-clock" style="margin-right:4px"></i>${fmtDate(n.created_at)}</div>
+        </div>
+        <div style="display:flex;align-items:flex-start">
+          ${n.status === 'Unread' ? `<button class="btn-icon btn-view" style="width:auto;padding:4px 10px;font-size:.75rem;border-radius:6px" onclick="markRead(${n.notification_id})">Mark Read</button>` : `<span class="badge badge-read">Read</span>`}
+        </div>
+      </div>`).join('');
+  }
+
+  function filterNotifs(status, btn) {
+    document.querySelectorAll('.filter-btn').forEach(b => {
+      b.style.background = '#fff'; b.style.color = '#666'; b.style.borderColor = '#ddd';
+    });
+    btn.style.background = '#ff6a00'; btn.style.color = '#fff'; btn.style.borderColor = '#ff6a00';
+    renderNotifs(status === 'all' ? allNotifs : allNotifs.filter(n => n.status === status));
+  }
+
+  async function markRead(id) {
+    const res = await apiFetch('/notifications/mark-read/' + id, { method: 'PUT' });
+    if (res.ok) {
+      document.getElementById('notif-' + id)?.classList.remove('unread');
+      document.getElementById('notif-' + id)?.classList.add('read');
+      showToast('Marked as read', 'success');
+      loadNotifications();
+    }
+  }
+
+  async function markAllRead() {
+    const unread = allNotifs.filter(n => n.status === 'Unread');
+    if (!unread.length) { showToast('No unread notifications', 'info'); return; }
+    await Promise.all(unread.map(n => apiFetch('/notifications/mark-read/' + n.notification_id, { method: 'PUT' })));
+    showToast('All notifications marked as read', 'success');
+    loadNotifications();
+  }
+
+  loadNotifications();
+  setInterval(loadNotifications, 15000); // Poll every 15 seconds
+</script>
+</body>
+</html>

@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>NOC Management | Fire NOC System</title>
+  <link rel="stylesheet" href="../css/style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+<div class="main-content" id="mainContent">
+  <div class="page-content">
+    <!-- Admin NOC Panel -->
+    <div id="adminNocPanel" style="display:none;margin-bottom:20px">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+        <div class="card">
+          <div class="card-header"><h5><i class="fas fa-check-circle" style="color:#28a745;margin-right:8px"></i>Approve NOC</h5></div>
+          <div class="card-body">
+            <div class="form-group">
+              <label class="form-label">Application ID</label>
+              <input type="number" class="form-control" id="approveAppId" placeholder="Enter application ID">
+            </div>
+            <button class="btn-primary-custom" style="background:#28a745;width:100%;justify-content:center" onclick="approveNOC()">
+              <i class="fas fa-check"></i> Approve NOC
+            </button>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-header"><h5><i class="fas fa-times-circle" style="color:#dc3545;margin-right:8px"></i>Reject NOC</h5></div>
+          <div class="card-body">
+            <div class="form-group">
+              <label class="form-label">Application ID</label>
+              <input type="number" class="form-control" id="rejectAppId" placeholder="Enter application ID">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Rejection Reason</label>
+              <input type="text" class="form-control" id="rejReason" placeholder="Reason for rejection">
+            </div>
+            <button class="btn-primary-custom" style="background:#dc3545;width:100%;justify-content:center" onclick="rejectNOC()">
+              <i class="fas fa-times"></i> Reject NOC
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- NOC List Table -->
+    <div class="card">
+      <div class="card-header">
+        <h5><i class="fas fa-certificate" style="color:#ff6a00;margin-right:8px"></i>NOC Records</h5>
+        <input type="text" class="search-input" id="nocSearch" placeholder="Search NOC records...">
+      </div>
+      <div class="card-body" style="padding:0">
+        <div class="table-responsive">
+          <table class="data-table" id="nocTable">
+            <thead><tr><th>#NOC</th><th>Building</th><th>App ID</th><th>Status</th><th>Approved By</th><th>Issue Date</th><th>Expiry Date</th><th>Reason</th></tr></thead>
+            <tbody id="nocTbody"><tr><td colspan="8" style="text-align:center;padding:30px;color:#999"><i class="fas fa-spinner fa-spin" style="color:#ff6a00"></i> Loading...</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="../js/main.js"></script>
+<script src="../js/layout.js"></script>
+<script>
+  const user = getUser();
+  if (!user) { window.location.href='login.html'; }
+  injectLayout(user?.role,'NOC Management');
+  if (user?.role === 'admin') document.getElementById('adminNocPanel').style.display = 'grid';
+
+  async function loadNOCRecords() {
+    const res = await apiFetch('/noc');
+    if (!res.ok) { showToast('Failed to load NOC records','error'); return; }
+    const tbody = document.getElementById('nocTbody');
+    if (!res.data.length) {
+      tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:30px;color:#999">No NOC records found</td></tr>';
+      return;
+    }
+    tbody.innerHTML = res.data.map(n => `
+      <tr>
+        <td>#${n.noc_id}</td>
+        <td><strong>${n.building_name}</strong></td>
+        <td>#${n.application_id}</td>
+        <td>${statusBadge(n.approval_status)}</td>
+        <td>${n.approver_name||'—'}</td>
+        <td>${fmtDate(n.issue_date)}</td>
+        <td>${fmtDate(n.expiry_date)}</td>
+        <td style="max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${n.rejection_reason||'—'}</td>
+      </tr>`).join('');
+    filterTable('nocSearch','nocTable');
+  }
+
+  async function approveNOC() {
+    const id = parseInt(document.getElementById('approveAppId').value);
+    if (!id) { showToast('Enter Application ID','warning'); return; }
+    if (!confirm(`Approve NOC for application #${id}?`)) return;
+    const res = await apiFetch('/noc/approve', { method:'POST', body: JSON.stringify({ application_id: id }) });
+    if (res.ok) {
+      showToast('NOC Approved successfully!','success');
+      document.getElementById('approveAppId').value = '';
+      loadNOCRecords();
+    } else showToast(res.data.error||'Failed','error');
+  }
+
+  async function rejectNOC() {
+    const id = parseInt(document.getElementById('rejectAppId').value);
+    const reason = document.getElementById('rejReason').value.trim();
+    if (!id) { showToast('Enter Application ID','warning'); return; }
+    if (!reason) { showToast('Enter rejection reason','warning'); return; }
+    if (!confirm(`Reject NOC for application #${id}?`)) return;
+    const res = await apiFetch('/noc/reject', { method:'POST', body: JSON.stringify({ application_id: id, rejection_reason: reason }) });
+    if (res.ok) {
+      showToast('NOC Rejected','success');
+      document.getElementById('rejectAppId').value = '';
+      document.getElementById('rejReason').value = '';
+      loadNOCRecords();
+    } else showToast(res.data.error||'Failed','error');
+  }
+
+  loadNOCRecords();
+</script>
+</body>
+</html>

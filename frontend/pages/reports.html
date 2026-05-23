@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Reports | Fire NOC System</title>
+  <link rel="stylesheet" href="../css/style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+<div class="main-content" id="mainContent">
+  <div class="page-content">
+    <!-- Summary cards -->
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:20px;margin-bottom:24px" id="reportStats"></div>
+
+    <!-- Charts row -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:20px">
+      <!-- Status Donut -->
+      <div class="card">
+        <div class="card-header"><h5><i class="fas fa-chart-pie" style="color:#ff6a00;margin-right:8px"></i>Applications by Status</h5></div>
+        <div class="card-body" style="display:flex;flex-direction:column;align-items:center">
+          <canvas id="statusChart" width="220" height="220"></canvas>
+          <div id="statusLegend" style="display:flex;flex-wrap:wrap;gap:10px;margin-top:16px;justify-content:center"></div>
+        </div>
+      </div>
+      <!-- Priority Bar -->
+      <div class="card">
+        <div class="card-header"><h5><i class="fas fa-chart-bar" style="color:#ff6a00;margin-right:8px"></i>Applications by Priority</h5></div>
+        <div class="card-body">
+          <div id="priorityBars" style="display:flex;flex-direction:column;gap:16px;margin-top:8px"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Inspection summary -->
+    <div class="card" style="margin-bottom:20px">
+      <div class="card-header"><h5><i class="fas fa-search" style="color:#ff6a00;margin-right:8px"></i>Inspection Summary</h5></div>
+      <div class="card-body" style="padding:0">
+        <div class="table-responsive">
+          <table class="data-table" id="inspSummaryTable">
+            <thead><tr><th>#</th><th>Building</th><th>Inspector</th><th>Date</th><th>Status</th><th>Findings</th></tr></thead>
+            <tbody id="inspSummaryTbody"><tr><td colspan="6" style="text-align:center;padding:24px;color:#999">Loading...</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Recent Activity Log -->
+    <div class="card">
+      <div class="card-header"><h5><i class="fas fa-history" style="color:#ff6a00;margin-right:8px"></i>NOC Records Overview</h5></div>
+      <div class="card-body" style="padding:0">
+        <div class="table-responsive">
+          <table class="data-table">
+            <thead><tr><th>#NOC</th><th>Building</th><th>Status</th><th>Approved By</th><th>Issue Date</th><th>Expiry</th></tr></thead>
+            <tbody id="nocSummaryTbody"><tr><td colspan="6" style="text-align:center;padding:24px;color:#999">Loading...</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="../js/main.js"></script>
+<script src="../js/layout.js"></script>
+<script>
+  const user = getUser();
+  if (!user) { window.location.href = 'login.html'; }
+  injectLayout(user?.role, 'Reports & Analytics');
+
+  const COLORS = { 'Pending':'#ffc107','Under Inspection':'#17a2b8','Follow-up Required':'#6f42c1','Approved':'#28a745','Rejected':'#dc3545' };
+  const PRIORITY_COLORS = { 'High':'#dc3545','Medium':'#ffc107','Low':'#28a745' };
+
+  async function loadReports() {
+    const [appRes, inspRes, nocRes] = await Promise.all([
+      apiFetch('/applications'),
+      apiFetch('/inspections'),
+      apiFetch('/noc')
+    ]);
+
+    if (!appRes.ok) return;
+    const apps  = appRes.data;
+    const insps = inspRes.ok ? inspRes.data : [];
+    const nocs  = nocRes.ok  ? nocRes.data  : [];
+
+    // Stat cards
+    const approved = apps.filter(a => a.current_status === 'Approved').length;
+    const rejected = apps.filter(a => a.current_status === 'Rejected').length;
+    const pending  = apps.filter(a => a.current_status === 'Pending').length;
+    document.getElementById('reportStats').innerHTML = `
+      <div class="stat-card"><div class="stat-icon orange"><i class="fas fa-file-alt"></i></div><div><div class="stat-val">${apps.length}</div><div class="stat-lbl">Total Applications</div></div></div>
+      <div class="stat-card"><div class="stat-icon green"><i class="fas fa-check"></i></div><div><div class="stat-val">${approved}</div><div class="stat-lbl">NOC Approved</div></div></div>
+      <div class="stat-card"><div class="stat-icon red"><i class="fas fa-times"></i></div><div><div class="stat-val">${rejected}</div><div class="stat-lbl">NOC Rejected</div></div></div>
+      <div class="stat-card"><div class="stat-icon yellow"><i class="fas fa-clock"></i></div><div><div class="stat-val">${pending}</div><div class="stat-lbl">Pending Review</div></div></div>
+      <div class="stat-card"><div class="stat-icon blue"><i class="fas fa-search"></i></div><div><div class="stat-val">${insps.length}</div><div class="stat-lbl">Total Inspections</div></div></div>`;
+
+    // Donut chart (canvas)
+    const statusCounts = {};
+    apps.forEach(a => statusCounts[a.current_status] = (statusCounts[a.current_status]||0)+1);
+    drawDonut(statusCounts, apps.length);
+
+    // Priority bars
+    const priorityCounts = { High:0, Medium:0, Low:0 };
+    apps.forEach(a => { if(priorityCounts[a.priority_level]!==undefined) priorityCounts[a.priority_level]++; });
+    const maxP = Math.max(...Object.values(priorityCounts), 1);
+    document.getElementById('priorityBars').innerHTML = Object.entries(priorityCounts).map(([p,c]) => `
+      <div>
+        <div style="display:flex;justify-content:space-between;margin-bottom:6px">
+          <span style="font-size:.84rem;font-weight:600">${statusBadge(p)}</span>
+          <span style="font-size:.84rem;color:#666">${c} applications</span>
+        </div>
+        <div style="background:#f0f0f0;border-radius:8px;height:14px;overflow:hidden">
+          <div style="background:${PRIORITY_COLORS[p]};width:${Math.round(c/maxP*100)}%;height:100%;border-radius:8px;transition:width .6s ease"></div>
+        </div>
+      </div>`).join('');
+
+    // Inspection table
+    document.getElementById('inspSummaryTbody').innerHTML = insps.length
+      ? insps.slice(0,8).map(i => `<tr>
+          <td>#${i.inspection_id}</td>
+          <td>${i.building_name}</td>
+          <td>${i.inspector_name}</td>
+          <td>${fmtDate(i.inspection_date)}</td>
+          <td>${statusBadge(i.inspection_status)}</td>
+          <td style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${i.findings||'—'}</td>
+        </tr>`).join('')
+      : '<tr><td colspan="6" style="text-align:center;padding:24px;color:#999">No inspections</td></tr>';
+
+    // NOC summary
+    document.getElementById('nocSummaryTbody').innerHTML = nocs.length
+      ? nocs.map(n => `<tr>
+          <td>#${n.noc_id}</td>
+          <td>${n.building_name}</td>
+          <td>${statusBadge(n.approval_status)}</td>
+          <td>${n.approver_name||'—'}</td>
+          <td>${fmtDate(n.issue_date)}</td>
+          <td>${fmtDate(n.expiry_date)}</td>
+        </tr>`).join('')
+      : '<tr><td colspan="6" style="text-align:center;padding:24px;color:#999">No NOC records</td></tr>';
+  }
+
+  function drawDonut(counts, total) {
+    const canvas = document.getElementById('statusChart');
+    const ctx = canvas.getContext('2d');
+    const cx = 110, cy = 110, r = 80, ir = 50;
+    const entries = Object.entries(counts);
+    let startAngle = -Math.PI / 2;
+    ctx.clearRect(0, 0, 220, 220);
+
+    entries.forEach(([status, count]) => {
+      const slice = (count / total) * 2 * Math.PI;
+      ctx.beginPath();
+      ctx.moveTo(cx, cy);
+      ctx.arc(cx, cy, r, startAngle, startAngle + slice);
+      ctx.closePath();
+      ctx.fillStyle = COLORS[status] || '#ccc';
+      ctx.fill();
+      startAngle += slice;
+    });
+
+    // Inner circle (donut hole)
+    ctx.beginPath();
+    ctx.arc(cx, cy, ir, 0, 2 * Math.PI);
+    ctx.fillStyle = '#fff';
+    ctx.fill();
+    ctx.fillStyle = '#333';
+    ctx.font = 'bold 28px Rajdhani, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(total, cx, cy - 6);
+    ctx.font = '11px Inter, sans-serif';
+    ctx.fillStyle = '#999';
+    ctx.fillText('Total', cx, cy + 14);
+
+    // Legend
+    document.getElementById('statusLegend').innerHTML = entries.map(([s, c]) => `
+      <div style="display:flex;align-items:center;gap:6px;font-size:.78rem">
+        <span style="width:10px;height:10px;border-radius:2px;background:${COLORS[s]||'#ccc'};display:inline-block"></span>
+        ${s} (${c})
+      </div>`).join('');
+  }
+
+  loadReports();
+</script>
+</body>
+</html>
